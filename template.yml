@@ -1,0 +1,12 @@
+Resources:
+  ServerlessFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: fn-moneycontrol-financial-data-scraping
+      CodeUri: ./app/src
+      Handler: function.handler
+      Runtime: python3.7
+      Timeout: 300
+      Layers:
+        - arn:aws:lambda:us-east-1:567944156995:layer:layer_selenium_python:1
+        - arn:aws:lambda:us-east-1:567944156995:layer:layer_chrome_selenium:3
