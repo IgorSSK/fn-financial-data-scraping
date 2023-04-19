@@ -8,7 +8,7 @@ RUN apt-get install -y google-chrome-stable
 
 # Download the Chrome Driver
 RUN apt-get install -yqq unzip
-RUN wget -O /tmp/chromedriver.zip http://chromedriver.storage.googleapis.com/`curl -sS chromedriver.storage.googleapis.com/LATEST_RELEASE_107`/chromedriver_linux64.zip
+RUN wget -O /tmp/chromedriver.zip http://chromedriver.storage.googleapis.com/`curl -sS chromedriver.storage.googleapis.com/LATEST_RELEASE_111`/chromedriver_linux64.zip
 RUN unzip /tmp/chromedriver.zip chromedriver -d /usr/local/bin/
 
 RUN apt-get install -yq tzdata && \
@@ -21,8 +21,8 @@ ENV TZ="America/Sao_Paulo"
 ENV DISPLAY=:99
 
 # AWS ENV
-ENV AWS_SECRET_ACCESS_KEY=Hc5vPwlhk97MTotyjX5sZcO/xQKkpKZZKng4Y+Nk
-ENV AWS_ACCESS_KEY_ID=AKIAYIPA4C5BSGS5MS7G
+ENV AWS_SECRET_ACCESS_KEY=***
+ENV AWS_ACCESS_KEY_ID=***
 ENV AWS_DEFAULT_REGION=us-east-1
 
 COPY . /app
