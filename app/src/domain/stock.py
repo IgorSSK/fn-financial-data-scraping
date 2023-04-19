@@ -1,13 +1,13 @@
 from datetime import datetime
 from typing import List
 
-class Price:
-  quotedAt: datetime
+class Quote:
   percent_change: float
   price_change: float
   price: float
   currency: str
   technical_rating: str
+  quoted_at: datetime
 
 class Stock: 
   name: str
@@ -15,7 +15,6 @@ class Stock:
   company_img: str
   company_shortcut: str
   exchange: str
-  currency: str
-  technical_rating: str
-  price: List[Price]
+  sector: str
+  quote: Quote
   

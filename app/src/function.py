@@ -8,7 +8,7 @@ from time import sleep
 import boto3
 import requests
 from domain.stock import Stock
-from domain.stock import Price
+from domain.stock import Quote
 from framework.web_driver import WebDriver
 from selenium.webdriver.common.by import By
 
@@ -17,10 +17,13 @@ def handler(event, context):
     print('FETCHING WEBSITE...')
     web_driver = WebDriver(connection_url=f'https://www.tradingview.com/markets/stocks-brazil/market-movers-all-stocks/').driver
 
-    print('CLOSING PROPAGANDA...')
-    web_driver.find_element(By.CLASS_NAME, 'tv-dialog__close').click()
-    sleep(5)
-
+    # try:
+    #     print('CLOSING PROPAGANDA...')
+    #     web_driver.find_element(By.CLASS_NAME, 'tv-dialog__close').click()
+    #     sleep(5)
+    # except:
+    #     print('Nothing to close.')
+        
     print('LOADING MORE CONTENT...')
     load_button = web_driver.find_element(By.CLASS_NAME, 'loadButton-Hg5JK_G3')
     load_button.click()
@@ -64,36 +67,35 @@ def mapper(row) -> Stock:
         percentual_change = cols[2].text
         value_change = cols[3].text
         technical_rating = cols[4].text
+        sector = cols[11].text
     except Exception as ex:
         print('Error while fetching web elements. {}'.format(ex))
     else:
-        price = Price()
-        price.price = value_only(current_price)
-        price.currency = 'BRL'
-        price.percent_change = value_only(percentual_change)
-        price.price_change = value_only(value_change)
-        price.quotedAt = datetime.now().isoformat()
-        price.technical_rating = str(technical_rating).upper().replace(' ', '_')
+        quote = Quote()
+        quote.price = value_only(current_price)
+        quote.currency = 'BRL'
+        quote.percent_change = value_only(percentual_change)
+        quote.price_change = value_only(value_change)
+        quote.quoted_at = datetime.now().isoformat()
+        quote.technical_rating = str(technical_rating).upper().replace(' ', '_')
 
         stock = Stock()
         stock.name = name
         stock.symbol = symbol
-        stock.currency = price.currency
         stock.exchange = 'BMFBOVESPA'
-        stock.price = price.price
-        stock.percent_change = price.percent_change
-        stock.price_change = price.price_change
-        stock.technical_rating = price.technical_rating
-        stock.price = [price.__dict__]
+        stock.sector = sector.upper().replace(' ', '_').replace('-', '')
+        stock.quote = quote
 
         try:
             img = ticker.find_element(By.TAG_NAME, 'img').get_attribute("src")
             # stock.company_shortcut = f'data:image/svg+xml;base64,{base64.b64encode(requests.get(img).content)}'
             stock.company_shortcut = img
-            img_bigger = img.replace('.sgv', '--big.svg')
+            img_bigger = img.replace('.svg', '--big.svg')
             stock.company_img = img_bigger
         except:
             print('Image not found for \'{}\'.'.format(symbol))
+            stock.company_shortcut = ''
+            stock.company_img = ''
 
         return stock
 
@@ -101,10 +103,13 @@ def mapper(row) -> Stock:
 def value_only(param: str) -> float:
     try:
         value = float(''.join(re.findall('\d|\.|\−|\+', param)).replace('−', '-'))
+
+        if param.find('−') > 0 | param.find('-') > 0: 
+            return -value 
+        else:
+            return value
     except:
         print('Error while converting string to float.')
-    else:
-        return value
 
 def save(stock: Stock) -> None:
     if(stock == None): return
@@ -112,11 +117,32 @@ def save(stock: Stock) -> None:
     dynamodb = boto3.resource('dynamodb', 'us-east-1')
     table = dynamodb.Table('MoneyControl.MarketStocks')
 
+    print(stock.__dict__)
 
-    item = json.loads(json.dumps(stock.__dict__), parse_float=Decimal)
-    response = table.put_item(
-        Item=item
-    )
+    quote = json.loads(json.dumps(stock.quote.__dict__), parse_float=Decimal)
+    response = table.update_item(
+            Key={"symbol": stock.symbol},
+            UpdateExpression="""SET #nm = :name,
+                                    company_img = :img,
+                                    company_shortcut = :shortcut,
+                                    exchange = :exchange,
+                                    sector = :sector,
+                                    quote = :quote,
+                                    timeline = list_append(if_not_exists(timeline, :empty_list), :timeline)""",
+            ExpressionAttributeNames={
+                "#nm": "name"
+            },
+            ExpressionAttributeValues={
+                ":name": stock.name,
+                ":img": stock.company_img,
+                ":shortcut": stock.company_shortcut,
+                ":exchange": stock.exchange,
+                ":sector": stock.sector,
+                ":quote": quote,
+                ":timeline": [quote],
+                ":empty_list": []
+            }
+        )
 
 if __name__ == "__main__":
     handler(None, None)
